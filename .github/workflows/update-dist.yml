@@ -1,0 +1,14 @@
+name: Update Distribution
+on: [workflow_dispatch]
+jobs:
+  update-dist:
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13' 
+      - run: python src/main.py
+      
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v7
