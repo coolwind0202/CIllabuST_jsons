@@ -2,3 +2,4 @@ pymupdf
 more-itertools
 pydantic
 beautifulsoup4
+requests
