@@ -28,13 +28,11 @@ def parse_chunk(chunk) -> models.Subject:
     )
 
     school_year = str_to_int(raw_school_year)
-    is_required = "必修" in required_elective
-    is_elective = "選択" in required_elective
+    requisite = models.Requisite(required_elective.strip())
     is_CAP_target = raw_is_CAP_target == "対象"
 
     logging.debug(school_year)
-    logging.debug(is_required)
-    logging.debug(is_elective)
+    logging.debug(requisite)
     logging.debug(is_CAP_target)
 
     _, category, _, raw_credits, _, raw_cource_count, *_ = excludes(chunk[2], [None])
@@ -92,8 +90,7 @@ def parse_chunk(chunk) -> models.Subject:
     return models.Subject(
         name=name,
         school_year=school_year,
-        is_required=is_required,
-        is_elective=is_elective,
+        requisite=requisite,
         is_CAP_target=is_CAP_target,
         category=category,
         credits=credits,

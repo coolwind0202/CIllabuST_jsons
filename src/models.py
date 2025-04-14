@@ -1,3 +1,5 @@
+from enum import StrEnum
+
 from pydantic import BaseModel
 
 class EvaluationItem(BaseModel):
@@ -9,11 +11,15 @@ class EvaluationEvent(BaseModel):
   title: str
   point: int
 
+class Requisite(StrEnum):
+  REQUIRE = "必修"
+  REQUIRE_ELECTIVE = "選択必修"
+  ELECTIVE = "選択"
+
 class Subject(BaseModel):
   name: str
   school_year: int
-  is_required: bool
-  is_elective: bool
+  requisite: Requisite
   is_CAP_target: bool
   category: str
   credits: int
