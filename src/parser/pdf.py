@@ -30,7 +30,7 @@ def parse_chunk(chunk) -> models.Subject:
     school_year = str_to_int(raw_school_year)
     is_required = "必修" in required_elective
     is_elective = "選択" in required_elective
-    is_CAP_target = raw_is_CAP_target == "必修"
+    is_CAP_target = raw_is_CAP_target == "対象"
 
     logging.debug(school_year)
     logging.debug(is_required)
