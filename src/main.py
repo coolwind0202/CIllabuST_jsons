@@ -3,17 +3,29 @@ import models
 
 import logging
 import sys
-from urllib.parse import urljoin
+from urllib.parse import urljoin, unquote
+import concurrent.futures
 
 from bs4 import BeautifulSoup
 import requests
-import pymupdf
 import more_itertools
 
-logging.basicConfig(filename="debug.log", encoding="utf-8", level=logging.DEBUG)
+# logging.basicConfig(filename="debug.log", encoding="utf-8", level=logging.DEBUG)
+logging.basicConfig(encoding="utf-8", level=logging.INFO)
 
 DOMAIN = "https://www.chitose.ac.jp"
 SYLLABUSES_PAGE_PATH = "/info/info_index/311"
+
+def fetch(url: str):
+    logging.info("Requesting %s", unquote(url))
+
+    resp = requests.get(url)
+    if resp.status_code != requests.codes.ok:
+        logging.error("Failed to fetch %s", unquote(url))
+        return b""
+
+    logging.info("Fetched %s", unquote(url))
+    return resp.content 
 
 if __name__ == "__main__":
     syllabuses_page_url = urljoin(DOMAIN, SYLLABUSES_PAGE_PATH)
@@ -35,16 +47,23 @@ if __name__ == "__main__":
 
     syllabus_urls = [urljoin(DOMAIN, path) for path in syllabus_paths]
 
-    syllabus_resps = (requests.get(url) for url in syllabus_urls)
-    syllabus_contents = (
-        resp.content for resp in syllabus_resps if resp.status_code == requests.codes.ok
-    )
+    with concurrent.futures.ProcessPoolExecutor() as executor:
+        # TODO: 将来的には、Submitで非同期的に実行し、この直下でQueueを使って待機するように書き換える
+        contents = list(executor.map(fetch, syllabus_urls))
 
-    docs = (pymupdf.Document(stream=content) for content in syllabus_contents)
+        page_counts = map(pdf.get_page_count, contents)
+        logging.info(page_counts)
 
-    s = list(more_itertools.flatten(pdf.parse_pdf(doc) for doc in docs))
-    subjects = models.Subjects(subjects=s)
+        nested_worker_args = (((content, i) for i in range(page_count)) for content, page_count in zip(contents, page_counts))
+        worker_args = list(more_itertools.flatten(nested_worker_args))
 
-    dump = subjects.model_dump_json()
-    with open("out.json", "w") as f:
-        f.write(dump)
+        nested_rows = executor.map(pdf.extract_rows, *zip(*worker_args))
+        rows = more_itertools.collapse(nested_rows, levels=2)
+
+        chunks = list(more_itertools.chunked(rows, 42))
+        
+        subjects = models.Subjects(subjects=[pdf.parse_chunk(chunk) for chunk in chunks])    
+        dump = subjects.model_dump_json()
+
+        with open("out.json", "w") as f:
+            f.write(dump)        

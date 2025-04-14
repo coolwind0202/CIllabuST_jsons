@@ -108,18 +108,19 @@ def parse_chunk(chunk) -> models.Subject:
         additional_information=additional_information,
     )
 
+def extract_rows(content, index):
+    logging.info("Extracting rows at Page %d on %s", index, content[:20])
 
-def parse_pdf(doc: pymupdf.Document) -> list[models.Subject]:
-    nested_rows = (
-        (
-            table.extract()
-            for table in page.find_tables(
-                clip=pymupdf.Rect(0, page.rect.height * 0.06, page.rect.br)
-            ).tables
-        )
-        for page in doc
-    )
-    rows = list(more_itertools.collapse(nested_rows, levels=2))
+    doc = pymupdf.Document(stream=content)
+    page = doc.load_page(index)
 
-    chunks = list(more_itertools.chunked(rows, 42))
-    return [parse_chunk(chunk) for chunk in chunks]
+    inner_rect = pymupdf.Rect(0, page.rect.height * 0.06, page.rect.br)
+    tables = page.find_tables(clip=inner_rect)
+
+    rows = [table.extract() for table in tables]
+    logging.info("Extracted rows at Page %d on %s", index, content[:20])
+
+    return rows
+
+def get_page_count(content):
+    return pymupdf.Document(stream=content).page_count
