@@ -65,5 +65,5 @@ if __name__ == "__main__":
         subjects = models.Subjects(subjects=[pdf.parse_chunk(chunk) for chunk in chunks])    
         dump = subjects.model_dump_json()
 
-        with open("out.json", "w") as f:
+        with open("./dist/out.json", "w") as f:
             f.write(dump)        
