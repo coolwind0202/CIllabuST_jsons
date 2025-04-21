@@ -5,6 +5,7 @@ import logging
 import sys
 from urllib.parse import urljoin, unquote
 import concurrent.futures
+import json
 
 from bs4 import BeautifulSoup
 import requests
@@ -64,6 +65,10 @@ if __name__ == "__main__":
         
         subjects = models.Subjects(subjects=[pdf.parse_chunk(chunk) for chunk in chunks])    
         dump = subjects.model_dump_json()
+        schema = json.dumps(subjects.model_json_schema())
 
         with open("./dist/out.json", "w") as f:
             f.write(dump)        
+
+        with open("./dist/out.schema.json", "w") as f:
+            f.write(schema)
