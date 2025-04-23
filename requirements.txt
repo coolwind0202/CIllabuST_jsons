@@ -3,3 +3,4 @@ more-itertools
 pydantic
 beautifulsoup4
 requests
+loguru
