@@ -1,13 +1,12 @@
-from parser import pdf
+from parser import category, navigation, subject_list, syallbus
 import models
+import utils
 
 import sys
-from urllib.parse import urljoin, unquote
+from urllib.parse import unquote
 import concurrent.futures
 import json
 
-from bs4 import BeautifulSoup
-import requests
 import more_itertools
 from loguru import logger
 
@@ -15,70 +14,40 @@ logger.remove()
 logger.add("debug.log", level="DEBUG")
 logger.add(sys.stdout, level="INFO")
 
-DOMAIN = "https://www.chitose.ac.jp"
-SYLLABUSES_PAGE_PATH = "/info/info_index/311"
-
-def fetch(url: str):
-    logger.debug(f"Requesting {unquote(url)}")
-
-    resp = requests.get(url)
-    if resp.status_code != requests.codes.ok:
-        logger.error(f"Failed to fetch {unquote(url)}")
-        return b""
-
-    logger.debug("Fetched %s", unquote(url))
-    return resp.content 
-
 if __name__ == "__main__":
-    logger.info("Fetching syllabus URLs")
-    syllabuses_page_url = urljoin(DOMAIN, SYLLABUSES_PAGE_PATH)
-    resp = requests.get(syllabuses_page_url)
+    nav = navigation.fetch_navigation()
 
-    if resp.status_code != requests.codes.ok:
-        logger.error("Request failed to %s", syllabuses_page_url)
-        logger.error("Status Code: %d", resp.status_code)
-        logger.error("Content: %s", resp.content)
-        sys.exit(1)
+    subject_list_content = utils.fetch(nav.subject_list_url)
+    pe_page_cell_texts = subject_list.parse_pe_page_cell_texts(subject_list_content)
 
-    soup = BeautifulSoup(resp.text, "html.parser")
+    subject_category_classifier = category.SubjectCategoryClassifier(
+            pe_possibility_detector=category.PEPossibilityDetectorByCellTexts(pe_page_cell_texts),
+            filename_hint_classifier=category.FilenameHintClassifier(),
+        )
+    parser = syallbus.Parser(category_classifier=subject_category_classifier)
 
-    syllabus_paths = [
-        a["href"]
-        for a in soup.find_all("a")
-        if "シラバス" in str(a) and "大学院" not in str(a)
-    ]
-
-    syllabus_urls = [urljoin(DOMAIN, path) for path in syllabus_paths]
 
     with concurrent.futures.ProcessPoolExecutor() as executor:
-        # TODO: 将来的には、Submitで非同期的に実行し、この直下でQueueを使って待機するように書き換える
         logger.info("Fetching syllabus contents")
-        contents = list(executor.map(fetch, syllabus_urls))
-
+        contents = list(executor.map(utils.fetch, nav.syllabus_urls))
 
         logger.info("Counting syllabus pages")
-        page_counts = map(pdf.get_page_count, contents)
-
+        page_counts = list(executor.map(syallbus.get_page_count, contents))
 
         logger.info("Extracting rows from PDF")
-        nested_worker_args = (((content, i) for i in range(page_count)) for content, page_count in zip(contents, page_counts))
-        worker_args = list(more_itertools.flatten(nested_worker_args))
-
-        nested_rows = executor.map(pdf.extract_rows, *zip(*worker_args))
-        rows = more_itertools.collapse(nested_rows, levels=2)
-
+        file_rows = list(executor.map(syallbus.extract_rows, contents))
 
         logger.info("Parsing rows as subjects")
-        chunks = list(more_itertools.chunked(rows, 42))
-        subjects = models.Subjects(subjects=[pdf.parse_chunk(chunk) for chunk in chunks])    
-
+        file_chunks = list(list(more_itertools.chunked(rows, 42)) for rows in file_rows)
+        file_subjects = [[parser.parse_chunk(filename=unquote(url), chunk=chunk) for chunk in chunks] for url, chunks in zip(nav.syllabus_urls, file_chunks)]
+        subjects = models.Subjects(subjects=more_itertools.flatten(file_subjects))
 
         logger.info("Dump subjects to dist files")
         dump = subjects.model_dump_json()
         schema = json.dumps(subjects.model_json_schema())
 
         with open("./dist/out.json", "w") as f:
-            f.write(dump)        
+            f.write(dump)
 
         with open("./dist/out.schema.json", "w") as f:
             f.write(schema)
