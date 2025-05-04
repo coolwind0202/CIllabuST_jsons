@@ -53,5 +53,5 @@ class Subject(BaseModel):
     additional_information: str
 
 
-class Subjects(BaseModel):
+class Syllabus(BaseModel):
     subjects: list[Subject]
