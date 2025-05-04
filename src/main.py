@@ -46,10 +46,10 @@ if __name__ == "__main__":
         dump = subjects.model_dump_json()
         schema = json.dumps(subjects.model_json_schema())
 
-        with open("./dist/out.json", "w") as f:
+        with open("./dist/syllabus.json", "w") as f:
             f.write(dump)
 
-        with open("./dist/out.schema.json", "w") as f:
+        with open("./dist/syllabus.schema.json", "w") as f:
             f.write(schema)
 
         logger.info("Complete!")
