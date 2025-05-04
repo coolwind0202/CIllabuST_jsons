@@ -11,5 +11,5 @@ def fetch(url: str):
         logger.error(f"Failed to fetch {unquote(url)}")
         raise RuntimeError
 
-    logger.debug("Fetched %s", unquote(url))
+    logger.debug(f"Fetched {unquote(url)}")
     return resp.content

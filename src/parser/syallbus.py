@@ -28,7 +28,7 @@ class Parser:
 
     def parse_chunk(self, *, filename, chunk) -> models.Subject:
         _, name, *_ = excludes(chunk[0], [None])
-        logger.debug("Parse %s", name)
+        logger.debug(name)
 
         subject_category = self.category_classifier.classify(
             filename=filename, subject_name=name
