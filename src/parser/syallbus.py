@@ -19,6 +19,14 @@ def str_to_int(s):
 
     return int(match.group(0))
 
+def parse_requisite(required_elective: str) -> models.Requisite:
+    if "必修" in required_elective:
+        if "選択" in required_elective:
+            return models.Requisite.REQUIRE_ELECTIVE
+        else:
+            return models.Requisite.REQUIRE
+    return models.Requisite.ELECTIVE
+
 
 class Parser:
     category_classifier: category.BaseSubjectCategoryClassifier
@@ -39,7 +47,7 @@ class Parser:
         )
 
         school_year = str_to_int(raw_school_year)
-        requisite = models.Requisite(required_elective.strip())
+        requisite = parse_requisite(required_elective)
         is_CAP_target = raw_is_CAP_target == "対象"
         logger.debug(school_year)
         logger.debug(requisite)

@@ -15,9 +15,9 @@ class EvaluationEvent(BaseModel):
 
 
 class Requisite(StrEnum):
-    REQUIRE = "必修"
-    REQUIRE_ELECTIVE = "選択必修"
-    ELECTIVE = "選択"
+    REQUIRE = auto()
+    REQUIRE_ELECTIVE = auto()
+    ELECTIVE = auto()
 
 
 class SubjectCategory(StrEnum):
